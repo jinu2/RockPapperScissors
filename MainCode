@@ -1,0 +1,219 @@
+
+org 100h
+
+;bu fuksyon print icin x satir ve y sutun piksel ile string yazmaya basliyor
+print macro x, y, attrib, sdat
+LOCAL   s_dcl, skip_dcl, s_dcl_end
+    pusha
+    mov dx, cs
+    mov es, dx
+    mov ah, 13h
+    mov al, 1
+    mov bh, 0
+    mov bl, attrib
+    mov cx, offset s_dcl_end - offset s_dcl
+    mov dl, x
+    mov dh, y
+    mov bp, offset s_dcl
+    int 10h
+    popa
+    jmp skip_dcl
+    s_dcl DB sdat
+    s_dcl_end DB 0
+    skip_dcl:    
+endm
+
+
+
+
+jmp start
+
+
+curB dw 0   ;fareden bilgi alinacak
+a db ?      ;klaviyeden bilgi alinacak 
+txt1 dw '1. oyuncu ounuyor $'
+txt2 dw '(Klaviyeden TAS icin T, MAKAZ icin M, KAGIT icin K harf basin): $'
+txt3 dw '2. oyuncu ounuyor $'
+txt4 dw '(Fareden TAS icin sag, MAKAZ icin sol, KAGIT icin iki tus ayni anda tiklayin): $' 
+oyuncu1 dw 'Oyuncu 1 kazandi'
+oyuncu2 dw 'Oyuncu 2 kazandi'
+
+
+start:   
+
+ lea dx,txt1         ;birinci string ekrana yazdirmasi        
+ mov ah,9
+ int 21h  
+ 
+ 
+ mov ah,2
+ mov dl,0ah 
+ int 21h   
+ mov dl,0dh          ;yeni satir ekrana gecmek icin
+ int 21h
+        
+ lea dx,txt2         ;ikinci string ekrana yazdirmasi      
+ mov ah,9
+ int 21h    
+        
+ mov ah,1
+ int 21h             ;1. oyuncu icin klavyeden bilgi alin 
+ mov a,al      
+ 
+        
+ mov ah,2
+ mov dl,0ah 
+ int 21h   
+ mov dl,0dh          ;yeni satir ekrana gecmek icin
+ int 21h  
+        
+ mov ah,9
+ lea dx,txt3         ;ucuncu string ekrana yazdirmasi
+ int 21h   
+ 
+ mov ah,9
+ lea dx,txt4         ;dorduncu string ekrana yazdirmasi
+ int 21h
+ 
+        
+ mov ax, 1003h ; yanip sonmeyi kapat.  
+ mov bx, 0        
+ int 10h
+
+ ;metin imlecini sakla
+ mov ch, 32
+ mov ah, 1
+ int 10h
+
+
+; fareyi sifirlayin ve durumunu alin:
+mov ax, 0
+int 33h
+cmp ax, 0
+jne ok
+
+
+ok:   
+; fare imlecini göster:
+mov ax, 1
+int 33h
+
+check_mouse_buttons: 
+;fareden durum alliniyor, sag, sol yada ikiside ayni anda mi basti
+mov ax, 3
+int 33h
+cmp bx, curB
+jne print_buttons           
+jmp check_mouse_buttons     ;bx 1,2 ve ya 3 olmadiysa dongu donecek
+
+
+print_buttons:  
+print 0,4,0000_1111b,"Oyuncu 1 = "    
+
+mov ah,2
+mov dl,a            ;oyuncu 1 ne sectiyse ekrana yazdir
+
+cmp a,6Dh          ;6D = 'm' 
+je left1 
+cmp a,4Dh          ;4D = 'M'
+je left1           
+cmp a,74h          ;74 = 't'
+je right1 
+cmp a,54h          ;54 = 'T'
+je right1
+cmp a,48h          ;48 = 'k'
+je both1
+cmp a,6Bh          ;6B = 'K'
+je both1           
+
+
+oyuncuprint:
+print 0,5,0000_1111b,"Oyuncu 2 =" ;oyuncu 2 ne sectiyse ekrana yazdir
+mov ax, bx
+mov curB, bx
+cmp curB,01
+je left
+cmp curB,02
+je right
+cmp curB,03
+je both
+ 
+
+    
+
+
+kazanan1:
+print 0,8,0000_1111b,"Oyuncu 1 kazandi!!"
+hlt
+
+kazanan2:
+print 0,8,0000_1111b,"Oyuncu 2 kazandi!!"
+hlt
+
+esit:
+print 0,8,0000_1111b,"Ikisi esittir!!"
+hlt
+
+
+
+left:
+print 10,5,0000_1111b,"MAKAZ"    
+;oyuncu iki makaz secti
+cmp a,74h                 ;oyuncu 1 tas sectiyse kazandi
+je kazanan1 
+cmp a,54h                 ;oyuncu 1 tas sectiyse kazandi
+je kazanan1
+cmp a,4Dh                 ;oyuncu 1 makaz sectiyse esit durum
+je esit
+cmp a,6Dh                 ;oyuncu 1 makaz sectiyse esit durum
+je esit 
+jmp kazanan2  
+hlt  
+
+right:
+print 10,5,0000_1111b,"TAS"
+;oyuncu iki tas secti
+cmp a,48h                  ;oyuncu 1 kagit sectiyse kazandi
+je kazanan1
+cmp a,6Bh                  ;oyuncu 1 kagit sectiyse kazandi
+je kazanan1
+cmp a,74h                  ;oyuncu 1 tas sectiyse esit durum
+je esit 
+cmp a,54h                  ;oyuncu 1 tas sectiyse esit durum
+je esit
+jmp kazanan2
+hlt
+both:
+
+print 10,5,0000_1111b,"KAGIT"
+cmp a,4Dh
+je kazanan1                ;oyuncu 1 makaz sectiyse kazandi
+cmp a,6Dh
+je kazanan1                ;oyuncu 1 makaz sectiyse kazandi
+cmp a,48h
+je esit                    ;oyuncu 1 kagit sectiyse esit durum
+cmp a,6Bh
+je esit                    ;oyuncu 1 kagit sectiyse esit durum
+jmp kazanan2
+hlt
+
+left1:
+print 10,4,0000_1111b,"MAKAZ" 
+jmp oyuncuprint  
+hlt
+right1:
+print 10,4,0000_1111b,"TAS"
+jmp oyuncuprint
+hlt
+both1:
+print 10,4,0000_1111b,"KAGIT"
+jmp oyuncuprint
+
+hlt
+
+
+ret
+     
+endp
+
+
